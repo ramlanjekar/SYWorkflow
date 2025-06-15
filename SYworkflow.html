@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seismic FWI Model Architecture</title>
+    <style>
+        body {
+            background-color: #2d1b4e;
+            color: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        
+        .container {
+            min-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .title {
+            text-align: center;
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 36px;
+            color: #e91e63;
+            letter-spacing: 1px;
+        }
+        
+        .flow-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 36px;
+            align-items: center;
+        }
+        
+        .stage {
+            background: linear-gradient(135deg, #2d1b4e 80%, #3a256b 100%);
+            border: 2px solid #3a256b;
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(45, 27, 78, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .stage:hover {
+            border-color: #e91e63;
+            box-shadow: 0 0 0 8px rgba(233, 30, 99, 0.18), 0 0 32px 16px rgba(233, 30, 99, 0.22), 0 16px 64px 0 rgba(233, 30, 99, 0.18), 0 2px 16px rgba(0,0,0,0.22);
+        }
+        
+        .stage-title {
+            font-size: 26px;
+            font-weight: bold;
+            color: #e91e63;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 2px solid #e91e63;
+            padding-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+        
+        .input-stage {
+            width: 800px;
+        }
+        
+        .preprocessing-stage {
+            width: 900px;
+        }
+        
+        .backbone-stage {
+            width: 1200px;
+        }
+        
+        .decoder-stage {
+            width: 1000px;
+        }
+        
+        .output-stage {
+            width: 600px;
+        }
+        
+        .details {
+            display: grid;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .detail-item {
+            background: rgba(233, 30, 99, 0.08);
+            padding: 14px;
+            border-radius: 10px;
+            border-left: 4px solid #e91e63;
+        }
+        
+        .detail-item:hover {
+            transform: scale(1.07) translateY(-6px);
+            box-shadow: 0 8px 32px rgba(233, 30, 99, 0.18), 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 2;
+            position: relative;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 5px;
+            font-size: 15px;
+        }
+        
+        .detail-value {
+            color: #e0e0e0;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        
+        .arrow {
+            font-size: 40px;
+            color: #e91e63;
+            text-align: center;
+            margin: 10px 0;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+        
+        .parallel-paths {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .path {
+            flex: 1;
+            max-width: 580px;
+        }
+        
+        .path-label {
+            text-align: center;
+            font-weight: bold;
+            color: #e91e63;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .ensemble-stage {
+            width: 800px;
+            background: linear-gradient(135deg, #2d1b4e 80%, #3a256b 100%);
+            border: 2px solid #e91e63;
+        }
+        
+        .technical-note {
+            background: rgba(233, 30, 99, 0.10);
+            border: 1px solid #e91e63;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #f5f5f5;
+        }
+        
+        .dimension-flow {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            justify-content: center;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        
+        .dimension-box {
+            background: #3a256b;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #e91e63;
+            border: 1px solid #e91e63;
+        }
+        
+        .arrow-small {
+            color: #e91e63;
+            font-size: 20px;
+        }
+        
+        body, .detail-value, .detail-label, .stage-title, .title, .technical-note, .dimension-box, .path-label, .arrow, .arrow-small {
+            font-family: Arial, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        }
+        
+        /* Add more whitespace and spacing for a clean, premium look */
+        .stage, .ensemble-stage {
+            margin-bottom: 18px;
+        }
+        .details {
+            margin-bottom: 8px;
+        }
+        /* Optional: If you want a three-column metrics summary, add here */
+        /* .metrics-summary { ... } */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">🌊 Seismic Full Waveform Inversion (FWI) - Deep Learning Architecture</div>
+        
+        <div class="flow-diagram">
+            <!-- Input Stage -->
+            <div class="stage input-stage">
+                <div class="stage-title"> Input: Seismic Waveform Data</div>
+                <div class="details">
+                    <div class="detail-item">
+                        <div class="detail-label">Raw Data Format:</div>
+                        <div class="detail-value">4D Arrays: (batch_size, num_sources, time_steps, num_receivers)</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Physical Meaning:</div>
+                        <div class="detail-value">Seismic waves recorded by receivers over time from multiple source locations. Each time step captures how waves propagate through different subsurface materials.</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Processed Input Shape:</div>
+                        <div class="detail-value">5 Channels × Height × Width</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="arrow">⬇️</div>
+            
+            <!-- Preprocessing Stage -->
+            <div class="stage preprocessing-stage">
+                <div class="stage-title"> Stem Layer Modifications</div>
+                <div class="details">
+                    <div class="detail-item">
+                        <div class="detail-label">Reflection Padding:</div>
+                        <div class="detail-value">ReflectionPad2d ( (0,0,78,78) ) - Adds 78 pixels top/bottom by mirroring values to preserve wave continuity at boundaries</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Custom Striding:</div>
+                        <div class="detail-value">Stride (4,1) instead of (2,2) - Aggressive vertical downsampling while preserving horizontal receiver spacing</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Channel Adaptation:</div>
+                        <div class="detail-value">Modified first conv layer from 3→5 channels to handle seismic data complexity</div>
+                    </div>
+                </div>
+                <div class="dimension-flow">
+                    <div class="dimension-box">5×H×W</div>
+                    <div class="arrow-small">→</div>
+                    <div class="dimension-box">5×(H+156)×W</div>
+                    <div class="arrow-small">→</div>
+                    <div class="dimension-box">Features×(H/4)×W</div>
+                </div>
+            </div>
+            
+            <div class="arrow">⬇️</div>
+            
+            <!-- Backbone Stage -->
+            <div class="stage backbone-stage">
+                <div class="stage-title"> Dual Backbone Architecture</div>
+                <div class="parallel-paths">
+                    <div class="path">
+                        <div class="path-label"> Path 1: CAFormer Backbone</div>
+                        <div class="stage">
+                            <div class="details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Architecture Type:</div>
+                                    <div class="detail-value">Convolutional Attention Former - Combines convolutional efficiency with transformer attention</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Key Features:</div>
+                                    <div class="detail-value">• Multi-scale feature extraction<br>• Separable attention mechanisms<br>• Efficient for dense prediction tasks</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Pre-training:</div>
+                                    <div class="detail-value">ImageNet-22k → ImageNet-1k fine-tuned weights provide strong feature representations</div>
+                                </div>
+                                <div class="technical-note">
+                                    <strong>Why CAFormer?</strong> Excellent at capturing both local geological features and long-range subsurface relationships crucial for velocity prediction.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="path">
+                        <div class="path-label"> Path 2: ConvNeXt Backbone</div>
+                        <div class="stage">
+                            <div class="details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Architecture Type:</div>
+                                    <div class="detail-value">Modernized ConvNet - Pure convolutional with modern training techniques</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Custom Modifications:</div>
+                                    <div class="detail-value">• All activations → GELU<br>• All norms → InstanceNorm2d<br>• Modified forward functions</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Rationale:</div>
+                                    <div class="detail-value">InstanceNorm better handles varying seismic amplitudes across different geological regions</div>
+                                </div>
+                                <div class="technical-note">
+                                    <strong>Why ConvNeXt?</strong> Robust convolutional features with modern improvements, complementing CAFormer's attention-based approach.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dimension-flow">
+                    <div class="dimension-box">Multi-scale Features</div>
+                    <div class="arrow-small">→</div>
+                    <div class="dimension-box">[F1, F2, F3, F4]</div>
+                    <div class="arrow-small">→</div>
+                    <div class="dimension-box">Hierarchical Representations</div>
+                </div>
+            </div>
+            
+            <div class="arrow">⬇️</div>
+            
+            <!-- Decoder Stage -->
+            <div class="stage decoder-stage">
+                <div class="stage-title"> Advanced Decoder Architecture</div>
+                <div class="details">
+                    <div class="detail-item">
+                        <div class="detail-label">PixelShuffle Upsampling:</div>
+                        <div class="detail-value">Instead of simple interpolation, uses learnable sub-pixel convolution for fine detail recovery - rearrange channels into spatial dimensions:</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">SCSE Attention Blocks:</div>
+                        <div class="detail-value">Spatial & Channel Squeeze-and-Excitation simultaneously - focuses on important spatial regions AND feature channels</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Intermediate Convolutions:</div>
+                        <div class="detail-value">Additional processing between encoder features and decoder blocks - increases model capacity for complex geological patterns</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Skip Connections:</div>
+                        <div class="detail-value">Multi-scale feature fusion from encoder to preserve both fine details and large-scale geological structures</div>
+                    </div>
+                </div>
+                <div class="technical-note">
+                    <strong>Design Philosophy:</strong> High-resolution reconstruction is critical for FWI - small velocity variations can significantly impact seismic wave propagation modeling.
+                </div>
+            </div>
+            
+            <div class="arrow">⬇️</div>
+            
+            <!-- Ensemble Stage -->
+            <div class="stage ensemble-stage">
+                <div class="stage-title">  Model Ensemble Strategy</div>
+                <div class="details">
+                    <div class="detail-item">
+                        <div class="detail-label">Ensemble Composition:</div>
+                        <div class="detail-value">Multiple CAFormer + ConvNeXt models trained with different seeds and configurations</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Weighted Averaging:</div>
+                        <div class="detail-value">First model: 0.8 weight, Additional models: 0.1 weight each - emphasizes best performing model while benefiting from diversity</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Test-Time Augmentation:</div>
+                        <div class="detail-value">Horizontal flipping with averaging - exploits geological symmetry for improved predictions</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="arrow">⬇️</div>
+            
+            <!-- Output Stage -->
+            <div class="stage output-stage">
+                <div class="stage-title"> Output: Velocity Maps</div>
+                <div class="details">
+                    <div class="detail-item">
+                        <div class="detail-label">Final Output Shape:</div>
+                        <div class="detail-value">2D Velocity Maps (70×70) representing subsurface structure</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Physical Meaning:</div>
+                        <div class="detail-value">Each pixel represents seismic wave velocity (m/s) at that subsurface location - used for geological interpretation and resource exploration</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Post-processing:</div>
+                        <div class="detail-value">Normalization: output × 1500 + 3000 to convert to realistic velocity values</div>
+                    </div>
+                </div>
+                <div class="dimension-flow">
+                    <div class="dimension-box">Model Output</div>
+                    <div class="arrow-small">→</div>
+                    <div class="dimension-box">70×70 Velocity Map</div>
+                    <div class="arrow-small">→</div>
+                    <div class="dimension-box">Geological Interpretation</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 40px; text-align: center; color: #888; font-size: 14px;">
+            <p>🔬 This architecture transforms complex 4D seismic waveform recordings into detailed 2D subsurface velocity maps</p>
+            <p>🌍 Applications: Oil & gas exploration, geological surveys, earthquake studies, carbon storage monitoring</p>
+        </div>
+    </div>
+</body>
+</html>
